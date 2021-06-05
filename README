@@ -7,3 +7,6 @@ Tool description:
 2. smart_link
    smart_link is used to link source file/directory smartly.
    It will create directory on local and link file from source to target.
+
+3. gen_license
+   gen_license is used to generate a license file.
