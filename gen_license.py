@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+################################
+# File Name   : gen_license.py
+# Author      : liyanqing
+# Created On  : 2021-06-04 04:31:03
+# Description : It is used to generate a license file
+#               with encrypted information.
+################################
+import os
+import re
+import sys
+import argparse
+import datetime
+from Crypto.Cipher import AES
+from binascii import b2a_hex
+
+os.environ['PYTHONUNBUFFERED'] = '1'
+
+def readArgs():
+    """
+    Read in arguments.
+    """
+    parser = argparse.ArgumentParser()
+
+    # Basic information.
+    parser.add_argument('-V', '--vendor',
+                        required=True,
+                        help='Specify the vendor name.')
+    parser.add_argument('-c', '--customer',
+                        required=True,
+                        help='Specify the customer name.')
+    parser.add_argument('-t', '--tool_name',
+                        required=True,
+                        help='Specify the tool name.')
+    parser.add_argument('-v', '--tool_version',
+                        required=True,
+                        help='Specify the tool version.')
+
+    # License limitation.
+    parser.add_argument('-n', '--license_number',
+                        default=1,
+                        help='Specify the license number limation, default is "1".')
+    parser.add_argument('-m', '--mac_list',
+                        required=True,
+                        nargs='+',
+                        help='Specify all valid MACs.')
+    parser.add_argument('-e', '--expiration_date',
+                        required=True,
+                        help='Specify the expiration date, format is "xxxx.xx.xx".')
+
+    # Others arguments.
+    parser.add_argument('-s', '--secret_key',
+                        required=True,
+                        help='Specify the secret key for AES encryption algorithm, it must be 16 bytes long.')
+    parser.add_argument('-l', '--license_file',
+                        default='./License.dat',
+                        help='Specify the output license file, default is "./License.dat".')
+
+    args = parser.parse_args()
+
+    # Check expiration date format.
+    try:
+        datetime.datetime.strptime(args.expiration_date, '%Y.%m.%d')
+    except Exception as error:
+        print('*Error*: "' + str(args.expiration_date) + '": Invalid expiration date format.')
+        sys.exit(1)
+
+    # Check length of secret key.
+    if len(args.secret_key) != 16:
+        print('*Error*: secret key must be 16 bytes long.')
+        sys.exit(1)
+
+    return(args.vendor, args.customer, args.tool_name, args.tool_version, args.license_number, args.mac_list, args.expiration_date, args.secret_key, args.license_file)
+
+def gen_license_file(vendor, customer, tool_name, tool_version, license_number, mac_list, expiration_date, secret_key, license_file):
+    # Should not re-write license file directly.
+    if os.path.exists(license_file):
+        print('*Error*: License file "' + str(license_file) + '" exists, please remove it first.')
+        sys.exit(1)
+
+    # Get encrypted license information string.
+    lic_info_string = str(license_number) + '#'
+
+    for mac in mac_list:
+        lic_info_string = str(lic_info_string) + ' ' + str(mac)
+
+    lic_info_string = str(lic_info_string) + '#' + str(expiration_date)
+
+    encrypted_lic_info = encrypt_string(secret_key, lic_info_string)
+
+    # Write license file.
+    with open(license_file, 'w') as LF:
+        LF.write('Vendor     : ' + str(vendor) + '\n')
+        LF.write('Customer   : ' + str(customer) + '\n')
+        LF.write('Tool       : ' + str(tool_name) + '\n')
+        LF.write('Version    : ' + str(tool_version) + '\n')
+        LF.write('Number     : ' + str(license_number) + '\n')
+        LF.write('Mac        : ' + str(' '.join(mac_list)) + '\n')
+        LF.write('Expiration : ' + str(expiration_date) + '\n')
+        LF.write('Sign       : ' + str(encrypted_lic_info) + '\n')
+
+        print('Generate license file "' + str(license_file) + '".')
+
+def encrypt_string(secret_key, content):
+    # The length of input string must be a multiple of 16.
+    while len(content) % 16:
+        content += ' '
+
+    content = content.encode('utf-8')
+
+    # Encrypt.
+    aes = AES.new(secret_key.encode('utf-8'), AES.MODE_CBC, secret_key.encode('utf-8'))
+    encrypted_content = b2a_hex(aes.encrypt(content)).decode('utf-8')
+
+    return(encrypted_content)
+
+################
+# Main Process #
+################
+def main():
+    (vendor, customer, tool_name, tool_version, license_number, mac_list, expiration_date, secret_key, license_file) = readArgs()
+    gen_license_file(vendor, customer, tool_name, tool_version, license_number, mac_list, expiration_date, secret_key, license_file)
+
+if __name__ == '__main__':
+    main()
