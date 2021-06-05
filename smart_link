@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+################################
+# File Name  : smart_link
+# Author     : liyanqing
+# Created On : 2020-09-16 07:11:28
+################################
+import os
+import re
+import sys
+import argparse
+import shutil
+
+CWD = os.getcwd()
+os.environ['PYTHONUNBUFFERED']='1'
+
+def readArgs():
+    """
+    Read in arguments.
+    """
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-f', '--from_item',
+                        required=True,
+                        default='',
+                        help='Specify the source file/directory.')
+    parser.add_argument('-t', '--to_item',
+                        default='',
+                        help='Specify the target file/directory.')
+    parser.add_argument('-e', '--exclusive_list',
+                        nargs='+',
+                        default=[],
+                        help='Specify the exclusive file/directory names.')
+    parser.add_argument('-d', '--debug',
+                        action='store_true',
+                        default=False,
+                        help='Debug mode, print more message.')
+
+    args = parser.parse_args()
+
+    if os.path.exists(args.from_item):
+        args.from_item = os.path.realpath(args.from_item)
+    else:
+        print('*Error*: "' + str(args.from_item) + '": No such source file/directory.')
+        sys.exit(1)
+
+    # Set and clean to_item.
+    if args.to_item:
+        args.to_item = os.path.realpath(args.to_item)
+    else: 
+        from_name = os.path.basename(args.from_item)
+        args.to_item = str(CWD) + '/' + str(from_name)
+
+    if os.path.exists(args.to_item):
+        remove_item(args.to_item, args.debug)
+
+    # Create to_item.
+    to_dir = os.path.dirname(args.to_item)
+
+    if not os.path.exists(to_dir):
+        create_directory(to_dir, args.debug)
+
+    return(args.from_item, args.to_item, args.exclusive_list, args.debug)
+
+def remove_item(exist_item, debug):
+    if os.path.exists(exist_item):
+        print('*Warning*: file/directory "' + str(exist_item) + '" exists, will remove it first.')
+
+    if debug:
+        print('rm -rf ' + str(exist_item))
+
+    try:
+        shutil.rmtree(exist_item)
+    except Exception as error:
+        if os.path.isfile(exist_item) or os.path.islink(exist_item):
+            try:
+                os.remove(exist_item)
+            except Exception as error:
+                print('*Error*: Failed on removing file/directory "' + str(exist_item) + '": ' + str(error))
+                sys.exit(1)
+        else:
+            print('*Error*: Failed on removing file/directory "' + str(exist_item) + '": ' + str(error))
+            sys.exit(1)
+
+def dir_link(from_dir, to_dir, exclusive_list, debug):
+    if not os.path.exists(from_dir):
+        print('*Warning*: source directory "' + str(from_dir) + '" is missing.')
+    else:
+        if not os.path.exists(to_dir):
+            create_directory(to_dir, debug)
+
+        for fd in os.listdir(from_dir):
+            if fd in exclusive_list:
+                print('*Warning*: "' + str(fd) + '" is on exclusive list, will ignore it.')
+            else:
+                from_dir_temp = os.path.join(from_dir, fd)
+                to_dir_temp = os.path.join(to_dir, fd)
+
+                if os.path.exists(to_dir_temp):
+                    remove_item(to_dir_temp, debug)
+
+                if os.path.isdir(from_dir_temp):
+                    create_directory(from_dir_temp, debug)
+                    dir_link(from_dir_temp, to_dir_temp, exclusive_list, debug)
+                else:
+                    file_link(from_dir_temp, to_dir_temp, exclusive_list, debug)
+
+def create_directory(dir_path, debug):
+    if not os.path.exists(dir_path):
+        if debug:
+            print('mkdir ' + str(dir_path))
+
+        try:
+            os.makedirs(dir_path)
+        except Exception as error:
+            print('*Error*: Failed on creating directory "' + str(dir_path) + '": ' + str(error))
+            sys.exit(1)
+
+def file_link(from_file, to_file, exclusive_list, debug):
+    if not os.path.exists(from_file):
+        print('*Warning*: source file "' + str(from_file) + '" is missing.')
+    else:
+        from_file_name = os.path.basename(from_file)
+
+        if from_file_name in exclusive_list:
+            print('*Warning*: "' + str(from_file_name) + '" is on exclusive list, will ignore it.')
+        else:
+            if os.path.exists(to_file):
+                remove_item(to_file, debug)
+
+            if debug:
+                print('ln -s ' + str(from_file) + ' ' + str(to_file))
+
+            try:
+                os.symlink(from_file, to_file)
+            except Exception as error:
+                print('*Error*: Failed on linking "' + str(from_file) + '" to "' + str(to_file) + '": ' + str(error))
+                sys.exit(1)
+
+################
+# Main Process #
+################
+def main():
+    (from_item, to_item, exclusive_list, debug) = readArgs()
+
+    if os.path.isdir(from_item):
+        dir_link(from_item, to_item, exclusive_list, debug)
+    else:
+        file_link(from_item, to_item, exclusive_list, debug)
+
+if __name__ == '__main__':
+    main()

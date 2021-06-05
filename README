@@ -1,0 +1,9 @@
+
+Tool description:
+
+1. cpython
+   cpython is used to generate a initial python file.
+
+2. smart_link
+   smart_link is used to link source file/directory smartly.
+   It will create directory on local and link file from source to target.

@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+import os
+import sys
+import stat
+import getpass
+import datetime
+
+def check_args():
+    # Make sure cpython have only one argument.
+    if len(sys.argv) != 2:
+        print('*Error*: Wrong argument!')
+        usage()
+        sys.exit(1)
+
+def usage():
+    # Print the cpython usage.
+    print('Usage:')
+    print('    ' + str(sys.argv[0]) + ' <file name>')
+
+def create_python_file():
+    file_name = sys.argv[1]
+
+    if os.path.exists(file_name):
+        print('*Error*: Python file "' + str(file_name) + '" exists, please remove it first!')
+        sys.exit(1)
+
+    (dir_name, base_name) = os.path.split(file_name)
+
+    if dir_name != '':
+        if not os.path.exists(dir_name):
+            os.mkdirs(dir_name)
+
+    user = getpass.getuser()
+    current_time = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+
+    try:
+        with open(file_name, 'w') as PF:
+            PF.write('#!/usr/bin/env python3\n')
+            PF.write('# -*- coding: utf-8 -*-\n')
+            PF.write('################################\n')
+            PF.write('# File Name   : ' + str(file_name) + '\n')
+            PF.write('# Author      : ' + str(user) + '\n')
+            PF.write('# Created On  : ' + str(current_time) + '\n')
+            PF.write('# Description : \n')
+            PF.write('################################\n')
+            PF.write('import os\n')
+            PF.write('import re\n')
+            PF.write('import sys\n')
+            PF.write('import argparse\n')
+            PF.write('\n')
+            PF.write("os.environ['PYTHONUNBUFFERED'] = '1'\n")
+            PF.write('\n')
+            PF.write('def readArgs():\n')
+            PF.write('    """\n')
+            PF.write('    Read in arguments.\n')
+            PF.write('    """\n')
+            PF.write('    parser = argparse.ArgumentParser()\n')
+            PF.write('\n')
+            PF.write("    parser.add_argument('-e', '--example',\n")
+            PF.write("                        default='',\n")
+            PF.write("                        help='This is an example argument.')\n")
+            PF.write('\n')
+            PF.write('    args = parser.parse_args()\n')
+            PF.write('\n')
+            PF.write('    return(args.example)\n')
+            PF.write('\n')
+            PF.write('################\n')
+            PF.write('# Main Process #\n')
+            PF.write('################\n')
+            PF.write('def main():\n')
+            PF.write('    (example) = readArgs()\n')
+            PF.write('\n')
+            PF.write("if __name__ == '__main__':\n")
+            PF.write('    main()\n')
+    except Exception as error:
+        print('*Error*: Failed on opening "' + str(file_name) + '" for write: ' + str(error))
+        sys.exit(1)
+
+    try:
+        # Open permission for crated python file.
+        os.chmod(file_name, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+    except Exception as error:
+        print('*Error*: Failed on changing file permission for "' + str(file_name) + '": ' + str(error))
+        sys.exit(1)
+
+################
+# Main Process #
+################
+def main():
+    check_args()
+    create_python_file()
+
+if __name__ == '__main__':
+    main()
