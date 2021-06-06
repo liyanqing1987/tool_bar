@@ -14,7 +14,7 @@ import shutil
 CWD = os.getcwd()
 os.environ['PYTHONUNBUFFERED']='1'
 
-def readArgs():
+def read_args():
     """
     Read in arguments.
     """
@@ -141,7 +141,7 @@ def file_link(from_file, to_file, exclusive_list, debug):
 # Main Process #
 ################
 def main():
-    (from_item, to_item, exclusive_list, debug) = readArgs()
+    (from_item, to_item, exclusive_list, debug) = read_args()
 
     if os.path.isdir(from_item):
         dir_link(from_item, to_item, exclusive_list, debug)

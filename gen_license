@@ -17,7 +17,7 @@ from binascii import b2a_hex
 
 os.environ['PYTHONUNBUFFERED'] = '1'
 
-def readArgs():
+def read_args():
     """
     Read in arguments.
     """
@@ -119,7 +119,7 @@ def encrypt_string(secret_key, content):
 # Main Process #
 ################
 def main():
-    (vendor, customer, tool_name, tool_version, license_number, mac_list, expiration_date, secret_key, license_file) = readArgs()
+    (vendor, customer, tool_name, tool_version, license_number, mac_list, expiration_date, secret_key, license_file) = read_args()
     gen_license_file(vendor, customer, tool_name, tool_version, license_number, mac_list, expiration_date, secret_key, license_file)
 
 if __name__ == '__main__':
