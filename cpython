@@ -5,17 +5,22 @@ import stat
 import getpass
 import datetime
 
+
 def check_args():
     # Make sure cpython have only one argument.
     if len(sys.argv) != 2:
         print('*Error*: Wrong argument!')
         usage()
         sys.exit(1)
+    elif sys.argv[1] in ['-h', '-help', 'help']:
+        usage()
+
 
 def usage():
     # Print the cpython usage.
     print('Usage:')
     print('    ' + str(sys.argv[0]) + ' <file name>')
+
 
 def create_python_file():
     file_name = sys.argv[1]
@@ -41,7 +46,7 @@ def create_python_file():
             PF.write('# File Name   : ' + str(file_name) + '\n')
             PF.write('# Author      : ' + str(user) + '\n')
             PF.write('# Created On  : ' + str(current_time) + '\n')
-            PF.write('# Description : \n')
+            PF.write('# Description :\n')
             PF.write('################################\n')
             PF.write('import os\n')
             PF.write('import re\n')
@@ -62,13 +67,14 @@ def create_python_file():
             PF.write('\n')
             PF.write('    args = parser.parse_args()\n')
             PF.write('\n')
-            PF.write('    return(args.example)\n')
+            PF.write('    return args.example\n')
             PF.write('\n')
             PF.write('################\n')
             PF.write('# Main Process #\n')
             PF.write('################\n')
             PF.write('def main():\n')
             PF.write('    (example) = read_args()\n')
+            PF.write('\n')
             PF.write('\n')
             PF.write("if __name__ == '__main__':\n")
             PF.write('    main()\n')
@@ -82,6 +88,7 @@ def create_python_file():
     except Exception as error:
         print('*Error*: Failed on changing file permission for "' + str(file_name) + '": ' + str(error))
         sys.exit(1)
+
 
 ################
 # Main Process #
