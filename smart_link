@@ -1,16 +1,53 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 ################################
-# File Name  : smart_link
-# Author     : liyanqing
-# Created On : 2020-09-16 07:11:28
+# File Name   : smart_link
+# Author      : liyanqing
+# Created On  : 2020-09-16 07:11:28
+# Description : link A to B, keep dir and link file.
 ################################
 import os
 import re
 import sys
 import shutil
+import argparse
 
 os.environ['PYTHONUNBUFFERED'] = '1'
+
+
+def read_args():
+    """
+    Read in arguments.
+    """
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('source_path',
+                        help='Specify source path.')
+    parser.add_argument('target_path',
+                        help='Specify target path.')
+    parser.add_argument('-o', '--overwrite',
+                        action='store_true',
+                        default=False,
+                        help='Overwrite by force if target_path exists.')
+
+    args = parser.parse_args()
+
+    # Check source_path exists or not.
+    if not os.path.exists(args.source_path):
+        print('*Error*: "' + str(args.source_path) + '": No such file or directory!')
+        sys.exit(1)
+
+    # Remove target_path if it exists on overwrite mode.
+    if os.path.exists(args.target_path):
+        if not args.overwrite:
+            print('*Error*: target path "' + str(args.target_path) + '" exists, please remove it first, or enable overwrite mode.')
+            sys.exit(1)
+        else:
+            remove_path(args.target_path)
+
+    args.target_path = os.path.abspath(args.target_path)
+
+    return args.source_path, args.target_path
 
 
 def create_directory(dir_path):
@@ -97,32 +134,34 @@ def file_link(source_file, target_file):
         print('*Warning*: source file "' + str(source_file) + '" is missing.')
     else:
         if os.path.exists(target_file):
-            remove_path(target_file)
+            print('*Warning*: target file "' + str(target_file) + '" exists.')
+        else:
+            print('ln -s ' + str(source_file) + ' ' + str(target_file))
 
-        print('ln -s ' + str(source_file) + ' ' + str(target_file))
+            try:
+                os.symlink(source_file, target_file)
+            except Exception as error:
+                print('*Error*: Failed on linking "' + str(source_file) + '" to "' + str(target_file) + '", ' + str(error))
+                sys.exit(1)
 
-        try:
-            os.symlink(source_file, target_file)
-        except Exception as error:
-            print('*Error*: Failed on linking "' + str(source_file) + '" to "' + str(target_file) + '", ' + str(error))
-            sys.exit(1)
+
+def smart_link(source_path, target_path):
+    """
+    Link directory with dir_link().
+    Link file with file_link().
+    """
+    if os.path.isdir(source_path):
+        dir_link(source_path, target_path)
+    else:
+        file_link(source_path, target_path)
 
 
 ################
 # Main Process #
 ################
 def main():
-    if len(sys.argv) != 3:
-        print('Usage: smart_link <source_path> <target_path>')
-        sys.exit(1)
-    else:
-        source_path = sys.argv[1]
-        target_path = os.path.abspath(sys.argv[2])
-
-        if os.path.isdir(source_path):
-            dir_link(source_path, target_path)
-        else:
-            file_link(source_path, target_path)
+    (source_path, target_path) = read_args()
+    smart_link(source_path, target_path)
 
 
 if __name__ == '__main__':
