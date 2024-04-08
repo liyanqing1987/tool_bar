@@ -1,34 +1,41 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+################################
+# File Name   : cpython
+# Author      : liyanqing.1987
+# Created On  : 2018-04-03 20:54:59
+# Description : Create standard python file.
+################################
 import os
 import sys
 import stat
 import getpass
 import datetime
+import argparse
+
+os.environ['PYTHONUNBUFFERED'] = '1'
 
 
-def check_args():
-    # Make sure cpython have only one argument.
-    if len(sys.argv) != 2:
-        print('*Error*: Wrong argument!')
-        usage()
-        sys.exit(1)
-    elif sys.argv[1] in ['-h', '-help', 'help']:
-        usage()
+def read_args():
+    """
+    Read in arguments.
+    """
+    parser = argparse.ArgumentParser()
 
+    parser.add_argument('file_name',
+                        help='Specify the file name, will generate the python file with a standard structure.')
 
-def usage():
-    # Print the cpython usage.
-    print('Usage:')
-    print('    ' + str(sys.argv[0]) + ' <file name>')
+    args = parser.parse_args()
 
-
-def create_python_file():
-    file_name = sys.argv[1]
-
-    if os.path.exists(file_name):
-        print('*Error*: Python file "' + str(file_name) + '" exists, please remove it first!')
+    # Check specifiled python file exists or not.
+    if os.path.exists(args.file_name):
+        print('*Error*: File "' + str(args.file_name) + '" exists, please remove it first!')
         sys.exit(1)
 
+    return args.file_name
+
+
+def create_python_file(file_name):
     (dir_name, base_name) = os.path.split(file_name)
 
     if dir_name != '':
@@ -40,7 +47,7 @@ def create_python_file():
 
     try:
         with open(file_name, 'w') as PF:
-            PF.write('#!/usr/bin/env python3\n')
+            PF.write('#!/ic/software/tools/python3/3.8.8/bin/python3\n')
             PF.write('# -*- coding: utf-8 -*-\n')
             PF.write('################################\n')
             PF.write('# File Name   : ' + str(file_name) + '\n')
@@ -55,6 +62,7 @@ def create_python_file():
             PF.write('\n')
             PF.write("os.environ['PYTHONUNBUFFERED'] = '1'\n")
             PF.write('\n')
+            PF.write('\n')
             PF.write('def read_args():\n')
             PF.write('    """\n')
             PF.write('    Read in arguments.\n')
@@ -68,6 +76,7 @@ def create_python_file():
             PF.write('    args = parser.parse_args()\n')
             PF.write('\n')
             PF.write('    return args.example\n')
+            PF.write('\n')
             PF.write('\n')
             PF.write('################\n')
             PF.write('# Main Process #\n')
@@ -94,8 +103,9 @@ def create_python_file():
 # Main Process #
 ################
 def main():
-    check_args()
-    create_python_file()
+    file_name = read_args()
+    create_python_file(file_name)
+
 
 if __name__ == '__main__':
     main()
