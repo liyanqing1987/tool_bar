@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+################################
+# File Name   : cplink
+# Author      : liyanqing.1987
+# Created On  : 2024-04-03 21:10:57
+# Description : Switch link into original file/dir.
+################################
+import os
+import sys
+import shutil
+import argparse
+
+os.environ['PYTHONUNBUFFERED'] = '1'
+
+
+def read_args():
+    """
+    Read in arguments.
+    """
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('links',
+                        nargs='+',
+                        help='Specify link path(s), will replace into original file/dir.')
+
+    args = parser.parse_args()
+
+    # Check specifiled link exists or not.
+    link_missing = False
+
+    for link in args.links:
+        if not os.path.exists(link):
+            print('*Error*: "' + str(link) + '": No such link!')
+            link_missing = True
+
+    if link_missing:
+        sys.exit(1)
+
+    return args.links
+
+
+def cplink(link_list):
+    """
+    Replace link with the origianl file/dir.
+    """
+    for link in link_list:
+        if os.path.islink(link):
+            link_real_path = os.path.realpath(link)
+
+            try:
+                print('Remove link ' + str(link))
+                os.remove(link)
+            except Exception as error:
+                print('*Error*: Failed on removing link "' + str(link) + '", ' + str(error))
+                continue
+
+            try:
+                print('Copy ' + str(link_real_path) + ' to ' + str(link))
+
+                if os.path.isdir(link_real_path):
+                    shutil.copytree(link_real_path, link)
+                else:
+                    shutil.copy(link_real_path, link)
+            except Exception as error:
+                print('*Error*: Failed on copying "' + str(link_real_path) + '" to "' + str(link) + '", ' + str(error))
+
+
+################
+# Main Process #
+################
+def main():
+    (link_list) = read_args()
+    cplink(link_list)
+
+
+if __name__ == '__main__':
+    main()
