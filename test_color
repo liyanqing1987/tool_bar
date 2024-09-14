@@ -6,10 +6,21 @@
 # Created On  : 2022-08-11 21:10:32
 # Description :
 ################################
+import os
 import sys
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+import getpass
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QColorDialog, QApplication
+from PyQt5.QtGui import QPalette
+
+# Solve some unexpected warning message.
+if 'XDG_RUNTIME_DIR' not in os.environ:
+    user = getpass.getuser()
+    os.environ['XDG_RUNTIME_DIR'] = '/tmp/runtime-' + str(user)
+
+    if not os.path.exists(os.environ['XDG_RUNTIME_DIR']):
+        os.makedirs(os.environ['XDG_RUNTIME_DIR'])
+
+    os.chmod(os.environ['XDG_RUNTIME_DIR'], 0o777)
 
 
 class QColorDialogDemo(QWidget):
@@ -57,6 +68,7 @@ def main():
     main = QColorDialogDemo()
     main.show()
     sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     main()

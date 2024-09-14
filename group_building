@@ -1,0 +1,338 @@
+#!/ic/software/tools/python3/3.8.8/bin/python3
+# -*- coding: utf-8 -*-
+################################
+# File Name   : group_building
+# Author      : liyanqing.1987
+# Created On  : 2023-02-02 19:09:54
+# Description :
+################################
+import os
+import re
+import sys
+import stat
+import copy
+import random
+import getpass
+
+from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QAction, qApp, QTabWidget, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel, QMessageBox, QComboBox, QHeaderView, QDesktopWidget, QFileDialog
+from PyQt5.QtGui import QBrush, QColor, QFont
+
+os.environ['PYTHONUNBUFFERED'] = '1'
+CWD = os.getcwd()
+
+# Solve some unexpected warning message.
+if 'XDG_RUNTIME_DIR' not in os.environ:
+    user = getpass.getuser()
+    os.environ['XDG_RUNTIME_DIR'] = '/tmp/runtime-' + str(user)
+
+    if not os.path.exists(os.environ['XDG_RUNTIME_DIR']):
+        os.makedirs(os.environ['XDG_RUNTIME_DIR'])
+
+    os.chmod(os.environ['XDG_RUNTIME_DIR'], stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+
+
+def move_gui_to_window_center(GUI):
+    """
+    Move specified GUI to the window center.
+    """
+    FG = GUI.frameGeometry()
+    CENTER = QDesktopWidget().availableGeometry().center()
+    FG.moveCenter(CENTER)
+    GUI.move(FG.topLeft())
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.user_list_file = ''
+        self.user_list = []
+        self.get_user_list()
+        self.init_ui()
+
+    def get_user_list(self):
+        # Clear self.user_list.
+        self.user_list = []
+
+        # If not specify self.user_list, use the default one.
+        if not self.user_list_file:
+            if os.path.exists(str(CWD) + '/user_list'):
+                self.user_list_file = str(CWD) + '/user_list'
+
+        # Parse user_list_file to get user list information.
+        if self.user_list_file:
+            if not os.path.exists(self.user_list_file):
+                QMessageBox.warning(self, '警告', '用户列表文件"' + str(self.user_list_file) + '"不存在!')
+            else:
+                with open(self.user_list_file, 'r') as ULF:
+                    for line in ULF.readlines():
+                        line = line.strip()
+
+                        if re.match('^#.*$', line) or re.match('^$', line):
+                            continue
+                        else:
+                            self.user_list.append(line)
+
+    def init_ui(self):
+        # Gen maenbar.
+        self.gen_menubar()
+
+        # Gen widgets.
+        self.top_tab = QTabWidget(self)
+        self.setCentralWidget(self.top_tab)
+
+        self.people_tab = QWidget()
+        self.top_tab.addTab(self.people_tab, '抽奖')
+
+        self.group_tab = QWidget()
+        self.top_tab.addTab(self.group_tab, '分组')
+
+        self.gen_people_tab()
+        self.gen_group_tab()
+
+        # Set GUI size, title.
+        self.resize(1000, 500)
+        self.setWindowTitle('团建小程序')
+        move_gui_to_window_center(self)
+
+    def gen_menubar(self):
+        menubar = self.menuBar()
+
+        # File
+        load_user_list_action = QAction('载入用户列表', self)
+        load_user_list_action.triggered.connect(self.load_user_list)
+
+        exit_action = QAction('退出', self)
+        exit_action.triggered.connect(qApp.quit)
+
+        file_menu = menubar.addMenu('文件')
+        file_menu.addAction(load_user_list_action)
+        file_menu.addAction(exit_action)
+
+        # Setup
+        reset_user_list_action = QAction('重置用户列表', self)
+        reset_user_list_action.triggered.connect(self.reset_user_list)
+
+        setup_menu = menubar.addMenu('设置')
+        setup_menu.addAction(reset_user_list_action)
+
+        # Help
+        about_action = QAction('关于', self)
+        about_action.triggered.connect(self.show_about)
+
+        help_menu = menubar.addMenu('帮助')
+        help_menu.addAction(about_action)
+
+    def load_user_list(self):
+        (self.user_list_file, file_type) = QFileDialog.getOpenFileName(self, '载入用户列表文件', '.', '*')
+        self.get_user_list()
+        self.update_people_num_combo()
+        self.update_group_num_combo()
+
+    def reset_user_list(self):
+        self.get_user_list()
+        self.update_people_num_combo()
+        self.update_group_num_combo()
+
+    def show_about(self):
+        message = """团建小程序用于实现团建/年会中的“抽奖”和“分组”功能。
+首先, 需要在"文件" -> "载入用户列表"中加载用户列表, 也可以使用当前路径下的"user_list"文件作为默认的用户列表.
+其次, 进入"抽奖"或者"分组"界面执行人员选取和分组功能.
+抽奖 : 从用户列表中随机抽取指定数目的用户, 之前抽取过的默认不再抽取.
+分组 : 将所有用户随机分成指定组数.
+
+遇到任何bug, 或者有功能加强需求, 请联系liyanqing1987@163.com"""
+        QMessageBox.about(self, '关于"团建小程序"', message)
+
+    def gen_people_tab(self):
+        self.people_frame = QFrame(self.people_tab)
+        self.people_frame.setFrameShadow(QFrame.Raised)
+        self.people_frame.setFrameShape(QFrame.Box)
+
+        self.people_table = QTableWidget(self.people_tab)
+
+        # Grid
+        people_tab_grid = QGridLayout()
+        people_tab_grid.addWidget(self.people_frame, 0, 0)
+        people_tab_grid.addWidget(self.people_table, 1, 0)
+
+        people_tab_grid.setRowStretch(0, 1)
+        people_tab_grid.setRowStretch(1, 20)
+
+        self.people_tab.setLayout(people_tab_grid)
+
+        self.gen_people_frame()
+
+    def gen_people_frame(self):
+        # people_num_label
+        people_num_label = QLabel('人数', self.people_frame)
+
+        # self.people_num_combo
+        self.people_num_combo = QComboBox(self.people_frame)
+        self.update_people_num_combo()
+
+        # empty_label
+        empty_label = QLabel('', self.people_frame)
+
+        # people_confirm_button
+        people_confirm_button = QPushButton('确认', self.people_frame)
+        people_confirm_button.clicked.connect(self.gen_people_table)
+
+        # Grid
+        people_frame_grid = QGridLayout()
+        people_frame_grid.addWidget(people_num_label, 0, 0)
+        people_frame_grid.addWidget(self.people_num_combo, 0, 1)
+        people_frame_grid.addWidget(empty_label, 0, 2)
+        people_frame_grid.addWidget(people_confirm_button, 0, 3)
+
+        people_frame_grid.setColumnStretch(0, 1)
+        people_frame_grid.setColumnStretch(1, 1)
+        people_frame_grid.setColumnStretch(2, 10)
+        people_frame_grid.setColumnStretch(3, 1)
+
+        self.people_frame.setLayout(people_frame_grid)
+
+    def update_people_num_combo(self):
+        self.people_num_combo.clear()
+        self.people_num_combo.addItem('')
+
+        for i in range(0, len(self.user_list)):
+            self.people_num_combo.addItem(str(i+1))
+
+    def gen_people_table(self):
+        if self.people_num_combo.currentText():
+            people_num = int(self.people_num_combo.currentText().strip())
+            people_list = []
+
+            while len(people_list) < people_num:
+                random_num = random.randint(0, len(self.user_list)-1)
+                # Get people_num users from self.user_list.
+                people_list.append(self.user_list[random_num])
+                # Remove selected people from self.user_list.
+                del self.user_list[random_num]
+
+            table_dic = {'中奖人': people_list}
+            self.gen_common_table(self.people_table, table_dic)
+            self.update_people_num_combo()
+            self.update_group_num_combo()
+
+    def gen_common_table(self, common_table, table_dic):
+        # Show table grid.
+        common_table.setShowGrid(True)
+
+        # Set table row/column number.
+        common_table.setRowCount(0)
+        common_table.setColumnCount(0)
+        common_table.setColumnCount(len(table_dic.keys()))
+
+        # Set table title.
+        common_table.setHorizontalHeaderLabels(list(table_dic.keys()))
+
+        # Fill common table with table_dic.
+        row_count = 0
+        column = -1
+
+        for (group_name, group_member_list) in table_dic.items():
+            column += 1
+
+            # Set random backgroud color.
+            bg_color = QColor(random.randint(200, 255), random.randint(200, 255), random.randint(200, 255))
+
+            # Table column width adaption.
+            common_table.horizontalHeader().setSectionResizeMode(column, QHeaderView.Stretch)
+
+            # Set table row number.
+            if row_count < len(group_member_list):
+                row_count = len(group_member_list)
+                common_table.setRowCount(row_count)
+
+            # Fill Items.
+            for (row, group_member) in enumerate(group_member_list):
+                item = QTableWidgetItem()
+                item.setText(group_member)
+                item.setBackground(QBrush(bg_color))
+                item.setFont(QFont('song', 18))
+                common_table.setItem(row, column, item)
+
+    def gen_group_tab(self):
+        self.group_frame = QFrame(self.group_tab)
+        self.group_frame.setFrameShadow(QFrame.Raised)
+        self.group_frame.setFrameShape(QFrame.Box)
+
+        self.group_table = QTableWidget(self.group_tab)
+
+        # Grid
+        group_tab_grid = QGridLayout()
+        group_tab_grid.addWidget(self.group_frame, 0, 0)
+        group_tab_grid.addWidget(self.group_table, 1, 0)
+
+        group_tab_grid.setRowStretch(0, 1)
+        group_tab_grid.setRowStretch(1, 20)
+
+        self.group_tab.setLayout(group_tab_grid)
+
+        self.gen_group_frame()
+
+    def gen_group_frame(self):
+        # group_num_label
+        group_num_label = QLabel('组数', self.group_frame)
+
+        # self.group_num_combo
+        self.group_num_combo = QComboBox(self.group_frame)
+        self.update_group_num_combo()
+
+        # empty_label
+        empty_label = QLabel('', self.group_frame)
+
+        # group_confirm_button
+        group_confirm_button = QPushButton('确认', self.group_frame)
+        group_confirm_button.clicked.connect(self.gen_group_table)
+
+        # Grid
+        group_frame_grid = QGridLayout()
+        group_frame_grid.addWidget(group_num_label, 0, 0)
+        group_frame_grid.addWidget(self.group_num_combo, 0, 1)
+        group_frame_grid.addWidget(empty_label, 0, 2)
+        group_frame_grid.addWidget(group_confirm_button, 0, 3)
+
+        group_frame_grid.setColumnStretch(0, 1)
+        group_frame_grid.setColumnStretch(1, 1)
+        group_frame_grid.setColumnStretch(2, 10)
+        group_frame_grid.setColumnStretch(3, 1)
+
+        self.group_frame.setLayout(group_frame_grid)
+
+    def update_group_num_combo(self):
+        self.group_num_combo.clear()
+        self.group_num_combo.addItem('')
+
+        if len(self.user_list) >= 3:
+            for i in range(2, len(self.user_list)//2+1):
+                self.group_num_combo.addItem(str(i))
+
+    def gen_group_table(self):
+        if self.group_num_combo.currentText():
+            group_num = int(self.group_num_combo.currentText().strip())
+            random_user_list = copy.deepcopy(self.user_list)
+            random.shuffle(random_user_list)
+            table_dic = {}
+
+            for (i, user) in enumerate(random_user_list):
+                group_name = '第' + str(i % group_num + 1) + '组'
+                table_dic.setdefault(group_name, [])
+                table_dic[group_name].append(user)
+
+            self.gen_common_table(self.group_table, table_dic)
+
+
+################
+# Main Process #
+################
+def main():
+    app = QApplication(sys.argv)
+    mw = MainWindow()
+    mw.show()
+    sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    main()
